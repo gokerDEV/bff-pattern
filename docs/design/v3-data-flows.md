@@ -1,6 +1,5 @@
 # V3 — SSR vs BFF Data Flow
 
-> **sysande view 3 of 10.** Review before moving to V4.
 > Render diagrams at https://mermaid.live
 
 ---

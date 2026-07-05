@@ -1,7 +1,5 @@
 # Cross-View Consistency Review
 
-> **sysande step 9 output.** Scans all 10 views for identifier conflicts, terminology drift, missing relationships, and gaps.
-
 ---
 
 ## Element Register — Final State
@@ -165,8 +163,6 @@ The two omissions (F03, F04) are low-severity and do not affect any architectura
 ---
 
 ## Next Steps
-
-Per sysande workflow — design phase is complete. The following outputs now exist:
 
 | Output | File |
 |---|---|

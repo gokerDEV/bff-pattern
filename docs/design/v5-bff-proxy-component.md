@@ -1,8 +1,5 @@
 # V5 — BFF Proxy: Component View
 
-> **sysande view 5 of 10.** Review before moving to V6.
-> Paste DSL into https://playground.structurizr.com/ · Flowchart at https://mermaid.live
-
 ---
 
 ## Structurizr DSL

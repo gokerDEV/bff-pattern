@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BFF Pattern Template
 
-## Getting Started
+A secure, scalable Next.js 16 template implementing the Backend-For-Frontend (BFF) pattern with NextAuth 5 (OAuth 2.1) and fully typed Orval generation for OpenAPI backends.
 
-First, run the development server:
+## Philosophy
+
+We design the system first, after we define libs/tools and rules. This template provides a robust architectural foundation for frontend developers to vibe code securely against an OpenAPI spec, without reinventing auth or data fetching loops.
+
+- **Single Backend**: This template connects to ONE upstream backend.
+- **Vibe Coding Ready**: Drop in an `openapi.json` and generate your API clients.
+- **Machine-enforced Architecture**: Rules verified by `dependency-cruiser` (`bun run arch:check`).
+
+## Vibe Coding / Generation Instructions
+
+To start vibe coding with this template, follow these exact steps:
+
+1. **Provide OpenAPI Spec**: 
+   Place your backend's `openapi.json` at the project root (or configure the remote URL in `orval.config.ts`).
+2. **Generate API Clients**: 
+   Run `bun run codegen`. This uses Orval to generate fully-typed React Query hooks, SSR fetchers, and Zod schemas in `src/lib/generated/`.
+3. **Configure Authentication**: 
+   Set up your OAuth 2.1 provider in `auth.ts` and populate the `.env` variables (use `.env.example` as a reference).
+4. **Build the UI**: 
+   Ask the AI agent to build out your UI components. The agent is instructed to read `AGENTS.md` which restricts it to using the generated code and enforcing the BFF architecture.
+5. **Verify Architecture**: 
+   Run `bun run arch:check` to ensure no boundaries (like leaking server secrets to the client) have been violated.
+
+## Tech Stack (Locked)
+
+- **Framework**: Next.js 16.2.10 (App Router, Node.js proxy)
+- **Auth**: NextAuth.js 5.0.0-beta.31
+- **API Codegen**: Orval (React Query + Zod)
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Tooling**: Bun (package manager), Biome (lint/format), Dependency-cruiser (architecture enforcement)
+
+## Architecture & System Design
+
+Our complete architecture is documented using the C4 model. Please read these before writing code.
+
+* [V1 — System Context](docs/design/v1-system-context.md)
+* [V2 — Container Map](docs/design/v2-container-map.md)
+* [V3 — Data Flows](docs/design/v3-data-flows.md)
+* [V4 — Auth Flows](docs/design/v4-auth-flows.md)
+* [V5 — BFF Proxy Component](docs/design/v5-bff-proxy-component.md)
+* [V6 — Auth Layer Component](docs/design/v6-auth-layer-component.md)
+* [V7 — Data Layer Component](docs/design/v7-data-layer-component.md)
+* [V8 — Codegen Pipeline](docs/design/v8-codegen-pipeline.md)
+* [V9 — Deployment](docs/design/v9-deployment.md)
+* [V10 — Architecture Rules](docs/design/v10-architecture-rules.md)
+
+## Development
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+bun install
+# Verify architecture rules
+bun run arch:check
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

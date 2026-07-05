@@ -1,8 +1,5 @@
 # V1 — System Context
 
-> **sysande view 1 of 10.** Review before moving to V2.
-> Paste the DSL block into https://playground.structurizr.com/ to render.
-
 ---
 
 ## Structurizr DSL

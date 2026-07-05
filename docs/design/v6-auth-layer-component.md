@@ -1,8 +1,5 @@
 # V6 — Auth Layer: Component View
 
-> **sysande view 6 of 10.** Review before moving to V7.
-> Paste DSL into https://playground.structurizr.com/ · Diagrams at https://mermaid.live
-
 ---
 
 ## Structurizr DSL
@@ -27,10 +24,10 @@ workspace "bff-pattern" "Auth Layer — Component View" {
         bffApp = softwareSystem "bff-pattern App" {
             tags "Internal"
 
-            edgeMiddleware = container "Edge Middleware" {
-                description "middleware.ts — calls auth() to enforce route protection."
-                technology "Next.js Middleware"
-                tags "Edge"
+            proxyContainer = container "Proxy" {
+                description "proxy.ts — calls auth() to enforce route protection."
+                technology "Next.js Proxy, Node.js Runtime"
+                tags "Server"
             }
 
             bffProxy = container "BFF Proxy" {
@@ -58,31 +55,29 @@ workspace "bff-pattern" "Auth Layer — Component View" {
 
                 oauthProviderConfig = component "OAuth Provider Config" {
                     description "Declares the OAuth 2.1 provider: authorization URL, token URL, client ID/secret, requested scopes, and profile mapping (how the IdP's user claims map to the session user shape)."
-                    technology "NextAuth Provider config, auth.config.ts"
+                    technology "NextAuth Provider config, auth.ts"
                     tags "Component"
                 }
 
                 jwtCallback = component "JWT Callback" {
                     description "Fires on every sign-in and on every session access. Encodes { accessToken, refreshToken, accessTokenExpiry, user } into the signed JWT. When accessTokenExpiry is within 30s, triggers a refresh_token grant against the IdP and updates the encoded values. On refresh failure, marks the session as expired."
-                    technology "TypeScript, callbacks.jwt in auth.config.ts"
+                    technology "TypeScript, callbacks.jwt in auth.ts"
                     tags "Component"
                 }
 
                 sessionCallback = component "Session Callback" {
                     description "Shapes the object returned by getServerSession(). Exposes: user profile fields (id, name, email, role) and a boolean tokenError flag. Does NOT expose raw access or refresh tokens to calling code."
-                    technology "TypeScript, callbacks.session in auth.config.ts"
+                    technology "TypeScript, callbacks.session in auth.ts"
                     tags "Component"
                 }
 
-                authorizedCallback = component "Authorized Callback" {
-                    description "Called by Edge Middleware via the auth() wrapper. Receives the session and the incoming request. Returns true to allow the request through, or false to redirect to the configured login page. Implements public-route allowlist matching."
-                    technology "TypeScript, callbacks.authorized in auth.config.ts"
+                    technology "TypeScript, callbacks.authorized in auth.ts"
                     tags "Component"
                 }
 
                 tokenManager = component "Token Manager" {
                     description "Manages the server-side client credentials token independently of the user session. Maintains an in-memory cache { token, expiresAt }. getClientCredentialsToken() returns the cached token or fetches a fresh one from the IdP using the Client Credentials grant. Proactive 30s refresh buffer."
-                    technology "TypeScript, lib/auth/token-manager.ts"
+                    technology "TypeScript, src/lib/auth/token-manager.ts"
                     tags "Component"
                 }
             }
@@ -104,7 +99,7 @@ workspace "bff-pattern" "Auth Layer — Component View" {
         tokenManager -> identityProvider    "POST /token (client_credentials grant)"
 
         # Consumers of Auth Handler
-        edgeMiddleware -> authorizedCallback "auth() — route protection check"
+        proxyContainer -> authorizedCallback "auth() — route protection check"
         bffProxy       -> sessionCallback    "getServerSession() — read user token"
         nextServer     -> sessionCallback    "getServerSession() — read session data"
         nextServer     -> tokenManager       "getClientCredentialsToken() — SSR calls"
@@ -179,7 +174,7 @@ stateDiagram-v2
 
     Refreshing --> Expired : Refresh fails\n(token revoked / IdP error)\ntokenError = true set in JWT
 
-    Expired --> Unauthenticated : Next request\nEdge Middleware detects tokenError\nSession cleared → redirect /login
+    Expired --> Unauthenticated : Next request\nProxy detects tokenError\nSession cleared → redirect /login
 
     Active --> Unauthenticated : User signs out\nGET /api/auth/signout\nSession cookie cleared
 ```
@@ -190,9 +185,9 @@ stateDiagram-v2
 
 | Callback | File | Fires when | Input | Output |
 |---|---|---|---|---|
-| `jwt()` | `auth.config.ts` | Sign-in; every session access; token refresh | Raw IdP tokens + existing JWT | Updated JWT (stored in cookie) |
-| `session()` | `auth.config.ts` | `getServerSession()` called | JWT payload | Safe session object (no raw tokens) |
-| `authorized()` | `auth.config.ts` | Edge Middleware `auth()` runs | Session + Request | `true` (allow) / `false` (redirect) |
+| `jwt()` | `auth.ts` | Sign-in; every session access; token refresh | Raw IdP tokens + existing JWT | Updated JWT (stored in cookie) |
+| `session()` | `auth.ts` | `getServerSession()` called | JWT payload | Safe session object (no raw tokens) |
+| `authorized()` | `auth.ts` | Proxy `auth()` runs | Session + Request | `true` (allow) / `false` (redirect) |
 
 ---
 
@@ -201,18 +196,12 @@ stateDiagram-v2
 | Component | File |
 |---|---|
 | Auth Route Handler | `app/api/auth/[...nextauth]/route.ts` |
-| OAuth Provider Config | `auth.config.ts` → `providers[]` |
-| JWT Callback | `auth.config.ts` → `callbacks.jwt` |
-| Session Callback | `auth.config.ts` → `callbacks.session` |
-| Authorized Callback | `auth.config.ts` → `callbacks.authorized` |
-| Token Manager | `lib/auth/token-manager.ts` |
-| NextAuth initialiser | `auth.ts` (imports auth.config, exports `auth`, `handlers`) |
-
-> **Note on `auth.ts` vs `auth.config.ts`:**
-> NextAuth 5 requires splitting config from initialisation to support Edge Runtime.
-> `auth.config.ts` — plain config object, Edge-compatible (no Node.js APIs).
-> `auth.ts` — calls `NextAuth(authConfig)`, exports `{ auth, handlers, signIn, signOut }`.
-> Edge Middleware imports from `auth.config.ts` only. Everything else imports from `auth.ts`.
+| OAuth Provider Config | `auth.ts` → `providers[]` |
+| JWT Callback | `auth.ts` → `callbacks.jwt` |
+| Session Callback | `auth.ts` → `callbacks.session` |
+| Authorized Callback | `auth.ts` → `callbacks.authorized` |
+| Token Manager | `src/lib/auth/token-manager.ts` |
+| NextAuth initialiser | `auth.ts` (exports `auth`, `handlers`, `signIn`, `signOut`) |
 
 ---
 
@@ -225,10 +214,10 @@ The `session()` callback deliberately omits `accessToken` and `refreshToken` fro
 `token-manager.ts` holds no reference to NextAuth internals. It is a pure server-side utility: a singleton module-level cache with a `getClientCredentialsToken()` function. This makes it testable in isolation and usable without any user being logged in.
 
 ### `authorized()` vs route-level session checks
-`authorized()` in Edge Middleware handles coarse-grained route protection (public vs. protected paths). Fine-grained authorisation (role checks, resource ownership) happens inside Server Components or the BFF Proxy after `getServerSession()` — not in the middleware.
+`authorized()` in the Proxy handles coarse-grained route protection (public vs. protected paths). Fine-grained authorisation (role checks, resource ownership) happens inside Server Components or the BFF Proxy after `getServerSession()` — not in the proxy.
 
-### `auth.config.ts` must remain Edge-compatible
-The `authorized()` callback runs in the Vercel Edge Runtime. This means `auth.config.ts` must not import any Node.js built-ins (`fs`, `crypto`, `http`). The `token-manager.ts` (which uses in-memory caching) is Node-only and must never be imported from `auth.config.ts`.
+### Next.js 16 Proxy runs on Node.js
+Unlike the legacy `middleware.ts`, `proxy.ts` defaults to the Node.js runtime. This allows us to safely consolidate all NextAuth configuration into `auth.ts` without needing a separate edge-compatible configuration file, and permits the use of Node.js dependencies natively inside the proxy layer.
 
 ---
 

@@ -1,6 +1,5 @@
 # V4 — Auth Flows
 
-> **sysande view 4 of 10.** Review before moving to V5.
 > Render diagrams at https://mermaid.live
 
 ---

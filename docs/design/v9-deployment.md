@@ -1,8 +1,5 @@
 # V9 — Deployment
 
-> **sysande view 9 of 10.** Review before moving to V10.
-> Paste DSL into https://playground.structurizr.com/ · Pipeline diagram at https://mermaid.live
-
 ---
 
 ## Structurizr DSL — Deployment Diagram
@@ -15,7 +12,7 @@ workspace "bff-pattern" "Deployment View — Production" {
         # ── Containers (from V2) ────────────────────────────────────────────────
         bffApp = softwareSystem "bff-pattern App" {
             browser       = container "Browser"       { tags "Client" }
-            edgeMiddleware = container "Edge Middleware" { tags "Edge" }
+            proxyContainer = container "Proxy" { tags "Server" }
             nextServer    = container "Next.js Server" { tags "Server" }
             bffProxy      = container "BFF Proxy"     { tags "Server" }
             authHandler   = container "Auth Handler"  { tags "Server" }
@@ -37,14 +34,6 @@ workspace "bff-pattern" "Deployment View — Production" {
                 description "Primary deployment platform."
                 technology "Vercel Platform"
 
-                deploymentNode "Vercel Edge Network" {
-                    description "Globally distributed edge runtime. Runs middleware closest to the user. Latency: ~5–20ms."
-                    technology "V8 Isolates — Edge Runtime (no Node.js APIs)"
-                    containerInstance bffApp.edgeMiddleware {
-                        description "middleware.ts — auth guard, route matching."
-                    }
-                }
-
                 deploymentNode "Vercel Serverless Functions" {
                     description "On-demand Node.js functions. Cold start: ~100–300ms. Max duration: 10s (Hobby) / 60s (Pro)."
                     technology "Node.js 20 LTS — Bun runtime (via custom build)"
@@ -57,7 +46,10 @@ workspace "bff-pattern" "Deployment View — Production" {
                     }
 
                     deploymentNode "API Functions" {
-                        description "Next.js API routes — BFF proxy and auth."
+                        description "Next.js API routes — BFF proxy, auth, and route proxy."
+                        containerInstance bffApp.proxyContainer {
+                            description "proxy.ts — auth guard, route matching."
+                        }
                         containerInstance bffApp.bffProxy {
                             description "app/api/[...proxy]/route.ts"
                         }
@@ -154,7 +146,7 @@ flowchart LR
 
     subgraph vercel["▲ Vercel"]
         deploy["vercel deploy"]
-        edge_deploy["Edge Network\n(middleware.ts)"]
+        proxy_deploy["Proxy\n(proxy.ts)"]
         fn_deploy["Serverless Functions\n(SSR + API routes)"]
         cdn_deploy["CDN\n(static assets + ISR cache)"]
     end
@@ -169,7 +161,7 @@ flowchart LR
     codegen --> build
     build --> output
     output --> deploy
-    deploy --> edge_deploy
+    deploy --> proxy_deploy
     deploy --> fn_deploy
     deploy --> cdn_deploy
 ```
@@ -200,13 +192,13 @@ flowchart LR
 
 | Node | Runtime | Max memory | Cold start | Network access |
 |---|---|---|---|---|
-| Edge Middleware | V8 Isolate (Edge) | 128 MB | ~0ms (always warm) | ❌ No direct backend calls — Edge only |
+| Proxy | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend + IdP |
 | Next.js SSR | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend + IdP |
 | BFF Proxy | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend |
 | Auth Handler | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls IdP |
 | CDN / Static | — | — | None | — |
 
-> **Edge Middleware constraint:** `auth.config.ts` must remain Edge-compatible (no Node.js APIs) because the `authorized()` callback runs in the Edge Runtime. This was established in V6 and is enforced by the dependency-cruiser rule in V10.
+> **Proxy runtime:** `proxy.ts` runs on Node.js by default in Next.js 16. This allows NextAuth to be fully consolidated in `auth.ts` without Edge-compatibility constraints.
 
 ---
 

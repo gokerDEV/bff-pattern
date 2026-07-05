@@ -1,6 +1,5 @@
 # bff-pattern — Coverage Plan
 
-> **sysande step 3 output.** Approve or revise before design begins.
 > Views are ordered: dependencies first. We design one view at a time.
 
 ---

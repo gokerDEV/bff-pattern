@@ -1,6 +1,5 @@
 # V8 — Codegen Pipeline
 
-> **sysande view 8 of 10.** Review before moving to V9.
 > Render diagrams at https://mermaid.live
 
 ---

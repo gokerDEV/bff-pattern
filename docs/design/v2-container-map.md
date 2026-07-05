@@ -1,8 +1,5 @@
 # V2 — Container Map
 
-> **sysande view 2 of 10.** Review before moving to V3.
-> Paste the DSL block into https://playground.structurizr.com/ to render.
-
 ---
 
 ## Structurizr DSL

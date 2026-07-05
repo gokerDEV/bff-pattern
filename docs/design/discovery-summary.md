@@ -1,7 +1,5 @@
 # bff-pattern — Discovery Summary
 
-> **sysande step 2 output.** Correct anything before we move to coverage planning.
-
 ---
 
 ## System Purpose

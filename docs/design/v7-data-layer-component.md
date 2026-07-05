@@ -1,8 +1,5 @@
 # V7 — Data Layer: Component View
 
-> **sysande view 7 of 10.** Review before moving to V8.
-> Paste DSL into https://playground.structurizr.com/ · Diagram at https://mermaid.live
-
 ---
 
 ## Structurizr DSL
