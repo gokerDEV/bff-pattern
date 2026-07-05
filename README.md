@@ -4,15 +4,15 @@ A secure, scalable Next.js 16 template implementing the Backend-For-Frontend (BF
 
 ## Philosophy
 
-We design the system first, after we define libs/tools and rules. This template provides a robust architectural foundation for frontend developers to vibe code securely against an OpenAPI spec, without reinventing auth or data fetching loops.
+We design the system first, after we define libs/tools and rules. This template provides a robust architectural foundation for frontend developers to build securely against an OpenAPI spec, without reinventing auth or data fetching loops.
 
 - **Single Backend**: This template connects to ONE upstream backend.
-- **Vibe Coding Ready**: Drop in an `openapi.json` and generate your API clients.
+- **AI Coding Ready**: Drop in an `openapi.json` and generate your API clients.
 - **Machine-enforced Architecture**: Rules verified by `dependency-cruiser` (`bun run arch:check`).
 
-## Vibe Coding / Generation Instructions
+## Generation Instructions
 
-To start vibe coding with this template, follow these exact steps:
+To start building with this template, follow these exact steps:
 
 1. **Provide OpenAPI Spec**: 
    Place your backend's `openapi.json` at the project root (or configure the remote URL in `orval.config.ts`).
@@ -35,18 +35,20 @@ To start vibe coding with this template, follow these exact steps:
 
 ## Architecture & System Design
 
-Our complete architecture is documented using the C4 model. Please read these before writing code.
+The canonical architecture documentation is under [`docs/`](docs/). Start with the design index:
 
-* [V1 — System Context](docs/design/v1-system-context.md)
-* [V2 — Container Map](docs/design/v2-container-map.md)
-* [V3 — Data Flows](docs/design/v3-data-flows.md)
-* [V4 — Auth Flows](docs/design/v4-auth-flows.md)
-* [V5 — BFF Proxy Component](docs/design/v5-bff-proxy-component.md)
-* [V6 — Auth Layer Component](docs/design/v6-auth-layer-component.md)
-* [V7 — Data Layer Component](docs/design/v7-data-layer-component.md)
-* [V8 — Codegen Pipeline](docs/design/v8-codegen-pipeline.md)
-* [V9 — Deployment](docs/design/v9-deployment.md)
-* [V10 — Architecture Rules](docs/design/v10-architecture-rules.md)
+- [Documentation Index](docs/README.md)
+- [Architecture Design Index](docs/design/README.md)
+- [System Context](docs/design/v1-system-context.md)
+- [Container Map](docs/design/v2-container-map.md)
+- [Data Flows](docs/design/v3-data-flows.md)
+- [Auth Flows](docs/design/v4-auth-flows.md)
+- [BFF Proxy Component](docs/design/v5-bff-proxy-component.md)
+- [Auth Layer Component](docs/design/v6-auth-layer-component.md)
+- [Data Layer Component](docs/design/v7-data-layer-component.md)
+- [Codegen Pipeline](docs/design/v8-codegen-pipeline.md)
+- [Deployment](docs/design/v9-deployment.md)
+- [Architecture Rules](docs/design/v10-architecture-rules.md)
 
 ## Development
 
