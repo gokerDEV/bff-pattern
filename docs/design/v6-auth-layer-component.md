@@ -11,7 +11,7 @@ workspace "bff-pattern" "Auth Layer — Component View" {
 
         # ── External actors ─────────────────────────────────────────────────────
         browser = person "Browser" {
-            description "End user navigating login/logout flows."
+            description "End user navigating login, callback, session, and logout flows."
             tags "External"
         }
 
@@ -25,58 +25,60 @@ workspace "bff-pattern" "Auth Layer — Component View" {
             tags "Internal"
 
             proxyContainer = container "Proxy" {
-                description "proxy.ts — calls auth() to enforce route protection."
+                description "proxy.ts — calls auth() to apply coarse-grained route protection before app and API handlers run."
                 technology "Next.js Proxy, Node.js Runtime"
                 tags "Server"
             }
 
             bffProxy = container "BFF Proxy" {
-                description "app/api/[...proxy]/route.ts"
+                description "app/api/[...proxy]/route.ts — server-side proxy for browser-initiated API calls."
                 technology "Next.js Route Handler"
                 tags "Server"
             }
 
             nextServer = container "Next.js Server" {
-                description "React Server Components"
+                description "React Server Components and server-side rendering."
                 technology "Next.js 16, RSC"
                 tags "Server"
             }
 
             authHandler = container "Auth Handler" {
-                description "NextAuth.js 5 — session management and token lifecycle."
+                description "NextAuth.js 5 — session management, OAuth callbacks, and token lifecycle."
                 technology "NextAuth.js 5.0.0-beta.31, OAuth 2.1, JWT"
                 tags "Server"
 
                 routeHandler = component "Auth Route Handler" {
-                    description "Mounts NextAuth's GET and POST handlers at app/api/auth/[...nextauth]/route.ts. Entry point for all sign-in, sign-out, callback, session, and CSRF token requests."
+                    description "Mounts NextAuth GET and POST handlers at app/api/auth/[...nextauth]/route.ts. Entry point for sign-in, sign-out, callback, session, and CSRF token requests."
                     technology "Next.js Route Handler, NextAuth handlers"
                     tags "Component"
                 }
 
                 oauthProviderConfig = component "OAuth Provider Config" {
-                    description "Declares the OAuth 2.1 provider: authorization URL, token URL, client ID/secret, requested scopes, and profile mapping (how the IdP's user claims map to the session user shape)."
+                    description "Declares the OAuth provider settings: issuer, client ID, client secret, scopes, authorization URL, token URL, and profile mapping."
                     technology "NextAuth Provider config, auth.ts"
                     tags "Component"
                 }
 
                 jwtCallback = component "JWT Callback" {
-                    description "Fires on every sign-in and on every session access. Encodes { accessToken, refreshToken, accessTokenExpiry, user } into the signed JWT. When accessTokenExpiry is within 30s, triggers a refresh_token grant against the IdP and updates the encoded values. On refresh failure, marks the session as expired."
+                    description "Runs during sign-in and session access. Stores token metadata in the signed JWT and performs refresh when the access token approaches expiry."
                     technology "TypeScript, callbacks.jwt in auth.ts"
                     tags "Component"
                 }
 
                 sessionCallback = component "Session Callback" {
-                    description "Shapes the object returned by getServerSession(). Exposes: user profile fields (id, name, email, role) and a boolean tokenError flag. Does NOT expose raw access or refresh tokens to calling code."
+                    description "Shapes the safe session object returned by auth() / getServerSession(). Exposes user-facing session fields and error state, not raw tokens."
                     technology "TypeScript, callbacks.session in auth.ts"
                     tags "Component"
                 }
 
+                authorizedCallback = component "Authorized Callback" {
+                    description "Runs inside auth() from proxy.ts. Decides whether the current request is public, protected, redirected, or allowed."
                     technology "TypeScript, callbacks.authorized in auth.ts"
                     tags "Component"
                 }
 
                 tokenManager = component "Token Manager" {
-                    description "Manages the server-side client credentials token independently of the user session. Maintains an in-memory cache { token, expiresAt }. getClientCredentialsToken() returns the cached token or fetches a fresh one from the IdP using the Client Credentials grant. Proactive 30s refresh buffer."
+                    description "Manages the server-side client-credentials token independently of user sessions. Maintains an in-memory token cache and refreshes proactively."
                     technology "TypeScript, src/lib/auth/token-manager.ts"
                     tags "Component"
                 }
@@ -85,25 +87,21 @@ workspace "bff-pattern" "Auth Layer — Component View" {
 
         # ── Relationships ───────────────────────────────────────────────────────
 
-        # Browser entry points into Auth Handler
-        browser -> routeHandler "GET/POST /api/auth/* (sign-in, callback, sign-out)"
+        browser -> routeHandler "GET/POST /api/auth/*"
 
-        # Internal callback chain (sign-in flow)
         routeHandler -> oauthProviderConfig "Reads provider settings"
-        routeHandler -> jwtCallback         "Invokes on token creation / refresh"
-        jwtCallback -> sessionCallback      "Passes JWT payload for session shaping"
+        routeHandler -> jwtCallback "Invokes on token creation / refresh"
+        jwtCallback -> sessionCallback "Provides JWT payload for session shaping"
 
-        # IdP interactions
-        routeHandler -> identityProvider    "Redirects browser for authorization"
-        jwtCallback  -> identityProvider    "POST /token (refresh_token grant)"
-        tokenManager -> identityProvider    "POST /token (client_credentials grant)"
+        routeHandler -> identityProvider "Redirects browser for authorization"
+        jwtCallback -> identityProvider "POST /token (refresh_token grant)"
+        tokenManager -> identityProvider "POST /token (client_credentials grant)"
 
-        # Consumers of Auth Handler
         proxyContainer -> authorizedCallback "auth() — route protection check"
-        bffProxy       -> sessionCallback    "getServerSession() — read user token"
-        nextServer     -> sessionCallback    "getServerSession() — read session data"
-        nextServer     -> tokenManager       "getClientCredentialsToken() — SSR calls"
-        bffProxy       -> tokenManager       "getClientCredentialsToken() — public whitelist"
+        bffProxy -> sessionCallback "auth() / getServerSession() — read safe session"
+        nextServer -> sessionCallback "auth() / getServerSession() — read safe session"
+        nextServer -> tokenManager "getClientCredentialsToken() — SSR calls"
+        bffProxy -> tokenManager "getClientCredentialsToken() — public whitelist"
     }
 
     views {
@@ -112,7 +110,7 @@ workspace "bff-pattern" "Auth Layer — Component View" {
             include *
             autoLayout tb
             title "V6 — Auth Layer: Component View"
-            description "The 6 components inside the Auth Handler and their consumers."
+            description "The six components inside the Auth Handler and their consumers."
         }
 
         styles {
@@ -123,11 +121,6 @@ workspace "bff-pattern" "Auth Layer — Component View" {
             }
             element "External" {
                 background #6b7280
-                color #ffffff
-                shape RoundedBox
-            }
-            element "Edge" {
-                background #7c3aed
                 color #ffffff
                 shape RoundedBox
             }
@@ -185,9 +178,9 @@ stateDiagram-v2
 
 | Callback | File | Fires when | Input | Output |
 |---|---|---|---|---|
-| `jwt()` | `auth.ts` | Sign-in; every session access; token refresh | Raw IdP tokens + existing JWT | Updated JWT (stored in cookie) |
-| `session()` | `auth.ts` | `getServerSession()` called | JWT payload | Safe session object (no raw tokens) |
-| `authorized()` | `auth.ts` | Proxy `auth()` runs | Session + Request | `true` (allow) / `false` (redirect) |
+| `jwt()` | `auth.ts` | Sign-in; session access; token refresh | Raw IdP tokens + existing JWT | Updated JWT stored in the session cookie |
+| `session()` | `auth.ts` | Safe session is read | JWT payload | Safe session object without raw tokens |
+| `authorized()` | `auth.ts` | `proxy.ts` calls `auth()` | Session + request | `true` / `false` route decision |
 
 ---
 
@@ -195,31 +188,31 @@ stateDiagram-v2
 
 | Component | File |
 |---|---|
-| Auth Route Handler | `app/api/auth/[...nextauth]/route.ts` |
+| Auth Route Handler | `src/app/api/auth/[...nextauth]/route.ts` |
 | OAuth Provider Config | `auth.ts` → `providers[]` |
 | JWT Callback | `auth.ts` → `callbacks.jwt` |
 | Session Callback | `auth.ts` → `callbacks.session` |
 | Authorized Callback | `auth.ts` → `callbacks.authorized` |
 | Token Manager | `src/lib/auth/token-manager.ts` |
-| NextAuth initialiser | `auth.ts` (exports `auth`, `handlers`, `signIn`, `signOut`) |
+| NextAuth initializer | `auth.ts` exports `auth`, `handlers`, `signIn`, `signOut` |
+| Request proxy | `proxy.ts` exports `proxy = auth` |
 
 ---
 
 ## Design Notes
 
+### `authorized()` belongs to the proxy boundary
+
+`authorized()` is not a page-level authorization mechanism. It is the coarse request gate called by `proxy.ts`. It decides whether a request may enter the application or must be redirected/blocked. Fine-grained authorization still belongs in Server Components, route handlers, or backend APIs.
+
 ### Session callback never exposes raw tokens
-The `session()` callback deliberately omits `accessToken` and `refreshToken` from the returned object. Server code that needs the access token reads it directly from the JWT via `getServerSession()` using an internal accessor — it is never accessible from client-side code or exposed via the `/api/auth/session` endpoint.
+
+The `session()` callback returns a safe session shape. Browser-readable session data must not contain raw access tokens, refresh tokens, client secrets, or backend URLs.
 
 ### Token Manager is independent of user sessions
-`token-manager.ts` holds no reference to NextAuth internals. It is a pure server-side utility: a singleton module-level cache with a `getClientCredentialsToken()` function. This makes it testable in isolation and usable without any user being logged in.
 
-### `authorized()` vs route-level session checks
-`authorized()` in the Proxy handles coarse-grained route protection (public vs. protected paths). Fine-grained authorisation (role checks, resource ownership) happens inside Server Components or the BFF Proxy after `getServerSession()` — not in the proxy.
+`token-manager.ts` handles client-credentials tokens for server-side calls. It has no dependency on browser sessions and can be tested independently.
 
 ### Next.js 16 Proxy runs on Node.js
-Unlike the legacy `middleware.ts`, `proxy.ts` defaults to the Node.js runtime. This allows us to safely consolidate all NextAuth configuration into `auth.ts` without needing a separate edge-compatible configuration file, and permits the use of Node.js dependencies natively inside the proxy layer.
 
----
-
-> ✅ Approve to continue to **V7 — Data Layer Component** (C4 L3).
-> Or request changes to components, callbacks, or the session state diagram.
+This design uses `proxy.ts`, not legacy `middleware.ts`. The proxy calls `auth()` directly and runs in the Node.js runtime, so the auth configuration can remain consolidated in `auth.ts`.
