@@ -1,4 +1,4 @@
-# bff-pattern — Coverage Plan
+# V02 — Coverage Plan
 
 > Views are ordered: dependencies first. We design one view at a time.
 
