@@ -9,17 +9,17 @@ workspace "bff-pattern" "Deployment View — Production" {
 
     model {
 
-        # ── Containers (from V2) ────────────────────────────────────────────────
+        # ── Containers (from V2/V6) ─────────────────────────────────────────────
         bffApp = softwareSystem "bff-pattern App" {
-            browser       = container "Browser"       { tags "Client" }
+            browser = container "Browser" { tags "Client" }
             proxyContainer = container "Proxy" { tags "Server" }
-            nextServer    = container "Next.js Server" { tags "Server" }
-            bffProxy      = container "BFF Proxy"     { tags "Server" }
-            authHandler   = container "Auth Handler"  { tags "Server" }
+            nextServer = container "Next.js Server" { tags "Server" }
+            bffProxy = container "BFF Proxy" { tags "Server" }
+            authHandler = container "Auth Handler" { tags "Server" }
         }
 
-        backendApi        = softwareSystem "OpenAPI Backend"   { tags "External" }
-        identityProvider  = softwareSystem "Identity Provider" { tags "External" }
+        backendApi = softwareSystem "OpenAPI Backend" { tags "External" }
+        identityProvider = softwareSystem "Identity Provider" { tags "External" }
 
         # ── Deployment environments ─────────────────────────────────────────────
         deploymentEnvironment "Production" {
@@ -31,24 +31,24 @@ workspace "bff-pattern" "Deployment View — Production" {
             }
 
             deploymentNode "Vercel" {
-                description "Primary deployment platform."
+                description "Reference deployment platform for the Next.js application."
                 technology "Vercel Platform"
 
                 deploymentNode "Vercel Serverless Functions" {
-                    description "On-demand Node.js functions. Cold start: ~100–300ms. Max duration: 10s (Hobby) / 60s (Pro)."
-                    technology "Node.js 20 LTS — Bun runtime (via custom build)"
+                    description "Node.js serverless runtime for server rendering and route handlers."
+                    technology "Node.js 20 LTS"
 
                     deploymentNode "Next.js SSR Functions" {
-                        description "React Server Components, page rendering, ISR."
+                        description "React Server Components, page rendering, and ISR."
                         containerInstance bffApp.nextServer {
-                            description "app/(public)/, app/(secure)/ — RSC page routes."
+                            description "app/ routes that render Server Components."
                         }
                     }
 
-                    deploymentNode "API Functions" {
-                        description "Next.js API routes — BFF proxy, auth, and route proxy."
+                    deploymentNode "Route Handler Functions" {
+                        description "Next.js route handlers and proxy entry points."
                         containerInstance bffApp.proxyContainer {
-                            description "proxy.ts — auth guard, route matching."
+                            description "proxy.ts — auth guard and route matching."
                         }
                         containerInstance bffApp.bffProxy {
                             description "app/api/[...proxy]/route.ts"
@@ -60,19 +60,19 @@ workspace "bff-pattern" "Deployment View — Production" {
                 }
 
                 deploymentNode "Vercel CDN" {
-                    description "Global content delivery. Serves static assets and cached pages. Latency: ~10–50ms."
+                    description "Global content delivery for static assets and cached pages."
                     technology "Vercel Edge Network — Static Layer"
                     infrastructureNode "Static Assets" {
-                        description "public/, built CSS, client JS bundles (_next/static/). Cache-Control: immutable."
+                        description "public/, built CSS, and client JS bundles."
                     }
                     infrastructureNode "ISR Page Cache" {
-                        description "Cached statically-generated and ISR pages. Revalidated via app/api/revalidate/ on backend webhook."
+                        description "Cached statically generated and ISR pages. Revalidated through app/api/revalidate/ when enabled."
                     }
                 }
             }
 
             deploymentNode "Customer Infrastructure" {
-                description "Customer-operated. Not part of the template — any hosting platform."
+                description "Customer-operated systems outside the template boundary."
                 technology "Any"
 
                 deploymentNode "Backend Host" {
@@ -102,10 +102,6 @@ workspace "bff-pattern" "Deployment View — Production" {
                 background #0e7490
                 color #ffffff
                 shape WebBrowser
-            }
-            element "Edge" {
-                background #7c3aed
-                color #ffffff
             }
             element "Server" {
                 background #1a6bcc
@@ -137,28 +133,30 @@ workspace "bff-pattern" "Deployment View — Production" {
 ```mermaid
 flowchart LR
     subgraph local["💻 Local / CI Runner"]
-        src["Source code\n(GitHub template repo)"]
-        env["Environment secrets\n(CI/CD variables)"]
-        codegen["bun run codegen\nFetch spec → generate clients"]
+        src["Source code\nGitHub template repo"]
+        env["Environment variables\nCI/CD settings"]
+        codegen["bun run codegen or codegen:remote\nGenerate clients"]
+        typecheck["bun run typecheck\nValidate TS contract"]
         build["bun run build\nnext build"]
         output[".next/ build output"]
     end
 
     subgraph vercel["▲ Vercel"]
         deploy["vercel deploy"]
-        proxy_deploy["Proxy\n(proxy.ts)"]
-        fn_deploy["Serverless Functions\n(SSR + API routes)"]
-        cdn_deploy["CDN\n(static assets + ISR cache)"]
+        proxy_deploy["Proxy\nproxy.ts"]
+        fn_deploy["Serverless Functions\nSSR + API routes"]
+        cdn_deploy["CDN\nstatic assets + ISR cache"]
     end
 
     subgraph customer["🏗️ Customer Infra"]
-        backend["OpenAPI Backend\n(must be live during codegen)"]
+        backend["OpenAPI Backend\nrequired only for codegen:remote"]
     end
 
     src --> codegen
     env --> codegen
-    backend -->|"GET /doc-json"| codegen
-    codegen --> build
+    backend -->|"GET /doc-json when ORVAL_REMOTE=true"| codegen
+    codegen --> typecheck
+    typecheck --> build
     build --> output
     output --> deploy
     deploy --> proxy_deploy
@@ -170,53 +168,56 @@ flowchart LR
 
 ## Environment Variables
 
-> **Rule:** Only `NEXT_PUBLIC_` variables are safe for the browser bundle. Everything else is server-only. No secrets ever appear in `NEXT_PUBLIC_` names.
+> **Rule:** Only `NEXT_PUBLIC_` variables are safe for the browser bundle. Everything else is server-only. No secret may be exposed through a `NEXT_PUBLIC_` variable.
 
 | Variable | Server-only | Required | Description |
-|---|---|---|---|
-| `BACKEND_URL` | ✅ | ✅ | Upstream API base URL (`https://api.example.com`) |
-| `AUTH_SECRET` | ✅ | ✅ | NextAuth.js JWT signing secret (32+ random bytes) |
-| `AUTH_URL` | ✅ | ✅ | Application base URL (`https://app.example.com`) — used for OAuth callbacks |
-| `AUTH_CLIENT_ID` | ✅ | ✅ | OAuth 2.1 client ID |
-| `AUTH_CLIENT_SECRET` | ✅ | ✅ | OAuth 2.1 client secret |
-| `AUTH_ISSUER_URL` | ✅ | ✅ | IdP issuer URL (for `.well-known/openid-configuration`) |
-| `AUTH_TOKEN_URL` | ✅ | ✅ | IdP token endpoint (for client credentials grant) |
-| `ALLOWED_ORIGINS` | ✅ | ✅ | Comma-separated list of allowed origins for CSRF validation |
-| `NODE_ENV` | ✅ | auto | Set by Vercel automatically (`production` / `development`) |
+|---|---:|---:|---|
+| `BACKEND_URL` | ✅ | Remote codegen / runtime API | Upstream API base URL, for example `https://api.example.com`. Required for `codegen:remote`, SSR calls, and BFF proxy calls. |
+| `AUTH_SECRET` | ✅ | ✅ | NextAuth.js JWT signing secret. |
+| `AUTH_URL` | ✅ | ✅ | Application base URL used for OAuth callbacks. |
+| `AUTH_CLIENT_ID` | ✅ | ✅ | OAuth client ID. |
+| `AUTH_CLIENT_SECRET` | ✅ | ✅ | OAuth client secret. |
+| `AUTH_ISSUER_URL` | ✅ | ✅ | IdP issuer URL, usually used for OIDC discovery. |
+| `AUTH_TOKEN_URL` | ✅ | ✅ | IdP token endpoint for refresh and client-credentials grants. |
+| `ALLOWED_ORIGINS` | ✅ | ✅ | Comma-separated allowed origins for BFF CSRF validation. |
+| `REVALIDATION_SECRET` | ✅ | Optional | Shared secret for `app/api/revalidate/route.ts`. Required only if the ISR revalidation endpoint is enabled. |
+| `ORVAL_REMOTE` | ✅ | Optional | Set to `true` only when codegen should fetch `${BACKEND_URL}/doc-json` instead of `src/contracts/openapi.json`. |
+| `NODE_ENV` | ✅ | auto | Runtime mode set by the deployment platform. |
 
-> ⚠️ No `NEXT_PUBLIC_` variables are defined by default. If the application ever needs a public variable (e.g. analytics ID), it must contain **no secret** and must be intentionally declared.
+No `NEXT_PUBLIC_` variables are defined by default. Any future public variable must be intentionally reviewed and must not contain credentials, backend URLs, token material, or private infrastructure details.
 
 ---
 
 ## Runtime Characteristics per Node
 
-| Node | Runtime | Max memory | Cold start | Network access |
-|---|---|---|---|---|
-| Proxy | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend + IdP |
-| Next.js SSR | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend + IdP |
-| BFF Proxy | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls backend |
-| Auth Handler | Node.js 20 | 1 GB | ~100–300ms | ✅ Full — calls IdP |
-| CDN / Static | — | — | None | — |
-
-> **Proxy runtime:** `proxy.ts` runs on Node.js by default in Next.js 16. This allows NextAuth to be fully consolidated in `auth.ts` without Edge-compatibility constraints.
+| Node | Runtime | Network access | Responsibility |
+|---|---|---:|---|
+| Proxy | Node.js | ✅ | Runs `proxy.ts`, calls `auth()`, applies coarse route protection |
+| Next.js SSR | Node.js | ✅ | Renders Server Components and performs SSR API calls |
+| BFF Proxy | Node.js | ✅ | Proxies browser-initiated API calls to the backend |
+| Auth Handler | Node.js | ✅ | Handles NextAuth routes, OAuth callbacks, sessions, and refresh |
+| CDN / Static | CDN | — | Serves static assets and cached ISR pages |
 
 ---
 
 ## Design Notes
 
 ### Why Vercel as the reference deployment
-Vercel is the natural fit for Next.js: zero-config Edge Middleware, ISR, and serverless functions map directly to the template's containers. The template is not Vercel-locked — the same architecture runs on any Node.js host (Railway, Fly.io, self-hosted Docker), but the deployment DSL and environment variable guide use Vercel as the reference.
+
+Vercel maps cleanly to the template's Next.js deployment model: server-side rendering, route handlers, static assets, and ISR cache. The architecture is not Vercel-locked; the same boundaries can run on another Node.js hosting platform.
+
+### `proxy.ts`, not legacy `middleware.ts`
+
+The repo uses `proxy.ts` and `auth()` for route protection. Deployment documentation must therefore describe the proxy as a Node.js runtime boundary, not as an Edge-only middleware boundary.
 
 ### ISR revalidation endpoint
-`app/api/revalidate/route.ts` accepts webhook calls from the backend (e.g. on content publish). It calls `revalidatePath()` or `revalidateTag()` to purge the ISR cache. This keeps the CDN cache fresh without requiring a full redeploy. The endpoint is protected by a shared secret (`REVALIDATION_SECRET`).
 
-### Client credentials token cache and serverless cold starts
-The token-manager.ts in-memory cache is **per function instance**. In serverless environments, multiple concurrent instances may each hold their own cached token. This is acceptable — the IdP receives multiple valid token requests but all are short-lived client credentials tokens. No shared state is needed.
+`app/api/revalidate/route.ts` may accept webhook calls from the backend and call `revalidatePath()` or `revalidateTag()`. If enabled, the endpoint must validate `REVALIDATION_SECRET` before performing revalidation.
+
+### Client-credentials token cache and serverless instances
+
+`token-manager.ts` uses an in-memory cache per function instance. In serverless environments, multiple instances may each request their own short-lived token. This is acceptable and avoids the need for shared state in the template.
 
 ### Secret rotation
-Rotating `AUTH_CLIENT_SECRET` or `AUTH_SECRET` requires a Vercel environment variable update and a redeployment. Existing user sessions signed with the old `AUTH_SECRET` will be invalidated — users will be logged out. This is a deliberate security property, not a bug.
 
----
-
-> ✅ Approve to continue to **V10 — Architecture Rules** (dependency-cruiser).
-> Or request changes to the deployment topology, environment variables, or runtime notes.
+Rotating `AUTH_CLIENT_SECRET` or `AUTH_SECRET` requires updating deployment environment variables and redeploying. Rotating `AUTH_SECRET` invalidates existing signed sessions, which logs users out by design.

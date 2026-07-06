@@ -4,16 +4,18 @@
 
 ## Rules Overview
 
+These rules make the BFF boundaries machine-checkable with `dependency-cruiser`.
+
 | # | Rule name | Severity | Prohibits | Derived from |
-|---|---|---|---|---|
-| R01 | `ssr-mutator-server-only` | error | Importing `ssr.mutator.ts` from `components/` or `lib/generated/rq/` | V3, V7 |
-| R02 | `token-manager-server-only` | error | Importing `token-manager.ts` from `components/` | V4, V6, V9 |
-| R03 | `proxy-internals-private` | error | Importing `lib/proxy/*` from anywhere except `app/api/[...proxy]/` | V5 |
-| R04 | `rq-uses-client-mutator-only` | error | `lib/generated/rq/` importing `ssr.mutator.ts` | V3, V7 |
-| R05 | `ssr-uses-ssr-mutator-only` | error | `lib/generated/ssr/` importing `client.mutator.ts` | V3, V7 |
-| R06 | `generated-no-app-imports` | error | `lib/generated/*` importing from `app/` or `components/` | V7 |
-| R07 | `client-components-no-server-secrets` | error | `components/` importing `ssr.mutator.ts` or `token-manager.ts` | V2, V3 |
-| R08 | `no-direct-generated-in-pages` | warn | `app/` importing directly from `lib/generated/` bypassing `lib/api/` | V7 |
+|---|---|---:|---|---|
+| R01 | `ssr-mutator-server-only` | error | Client components or generated RQ clients importing `ssr.mutator.ts` | V3, V7 |
+| R02 | `token-manager-server-only` | error | Client components importing `token-manager.ts` | V4, V6, V9 |
+| R03 | `proxy-internals-private` | error | Importing `lib/proxy/*` from outside `app/api/[...proxy]/route.ts` | V5 |
+| R04 | `rq-uses-client-mutator-only` | error | `src/lib/generated/rq/` importing `ssr.mutator.ts` | V3, V7 |
+| R05 | `ssr-uses-ssr-mutator-only` | error | `src/lib/generated/ssr/` importing `client.mutator.ts` | V3, V7 |
+| R06 | `generated-no-app-imports` | error | Generated files importing from `app/` or `components/` | V7 |
+| R07 | `client-components-no-server-only-imports` | error | Client components importing auth/proxy/SSR server-only modules | V2, V3, V6 |
+| R08 | `no-direct-generated-in-pages` | warn | `app/` importing generated SSR/RQ clients directly | V7 |
 
 ---
 
@@ -21,31 +23,31 @@
 
 ```mermaid
 graph TD
-    subgraph browser["🌐 Browser Bundle (safe to ship)"]
-        comp["components/"]
-        rq["lib/generated/rq/"]
-        cm["lib/api/client.mutator.ts"]
+    subgraph browser["🌐 Browser Bundle"]
+        comp["src/components/"]
+        rq["src/lib/generated/rq/"]
+        cm["src/lib/api/client.mutator.ts"]
     end
 
-    subgraph server["🖥️ Server Only (never in browser)"]
-        rsc["app/ — RSC pages"]
-        ssr["lib/generated/ssr/"]
-        sm["lib/api/ssr.mutator.ts"]
-        tm["lib/auth/token-manager.ts"]
-        proxy_lib["lib/proxy/*"]
+    subgraph server["🖥️ Server Only"]
+        rsc["src/app/ — RSC pages"]
+        ssr["src/lib/generated/ssr/"]
+        sm["src/lib/api/ssr.mutator.ts"]
+        tm["src/lib/auth/token-manager.ts"]
+        proxy_lib["src/lib/proxy/*"]
         auth_ts["auth.ts"]
         proxy_ts["proxy.ts"]
     end
 
-    subgraph shared["📦 Shared (anywhere)"]
-        types["lib/generated/schemas/"]
-        zod["lib/generated/zod/"]
-        err["lib/api/error-handler.utils.ts"]
-        fav["lib/api/fetch-and-validate.ts"]
+    subgraph shared["📦 Shared"]
+        types["src/lib/generated/schemas/"]
+        zod["src/lib/generated/zod/"]
+        err["src/lib/api/error-handler.utils.ts"]
+        fav["src/lib/api/fetch-and-validate.ts"]
     end
 
     subgraph locked["🔒 Private to proxy route"]
-        proxy_route["app/api/[...proxy]/route.ts"]
+        proxy_route["src/app/api/[...proxy]/route.ts"]
         proxy_lib
     end
 
@@ -55,9 +57,10 @@ graph TD
     proxy_ts --> auth_ts
     proxy_route --> proxy_lib
 
-    %% Forbidden (shown as red X)
     comp -. "❌ R01,R07" .-> sm
-    comp -. "❌ R07" .-> tm
+    comp -. "❌ R02,R07" .-> tm
+    comp -. "❌ R07" .-> auth_ts
+    comp -. "❌ R07" .-> proxy_ts
     rq -. "❌ R04" .-> sm
     ssr -. "❌ R05" .-> cm
 
@@ -72,147 +75,86 @@ graph TD
 ## `.dependency-cruiser.cjs`
 
 ```js
-// .dependency-cruiser.cjs
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
-
-    // ── R01: SSR mutator is server-only ────────────────────────────────────
     {
       name: 'ssr-mutator-server-only',
       comment:
-        'ssr.mutator.ts reads server env vars and injects OAuth tokens. ' +
-        'It must never be imported in client components or RQ clients.',
+        'ssr.mutator.ts is server-only. It must not be imported by client components or generated RQ clients.',
       severity: 'error',
-      from: {
-        path: '^(components/|lib/generated/rq/)',
-      },
-      to: {
-        path: '^src/lib/api/ssr\\.mutator\\.ts$',
-      },
+      from: { path: '^((src/)?components/|(src/)?lib/generated/rq/)' },
+      to: { path: '^(src/)?lib/api/ssr\\.mutator\\.ts$' },
     },
-
-    // ── R02: Token manager is Node.js-only ─────────────────────────────────
     {
       name: 'token-manager-server-only',
       comment:
-        'token-manager.ts uses in-memory Node.js state. ' +
-        'It must not be imported from client components.',
+        'token-manager.ts is server-only. It must not be imported by client components.',
       severity: 'error',
-      from: {
-        path: '^components/',
-      },
-      to: {
-        path: '^src/lib/auth/token-manager\\.ts$',
-      },
+      from: { path: '^(src/)?components/' },
+      to: { path: '^(src/)?lib/auth/token-manager\\.ts$' },
     },
-
-    // ── R03: lib/proxy/ components are private to the proxy route ──────────
     {
       name: 'proxy-internals-private',
       comment:
-        'lib/proxy/ components are internal to app/api/[...proxy]/route.ts. ' +
-        'They must not be imported elsewhere.',
+        'lib/proxy/ modules are private to app/api/[...proxy]/route.ts.',
       severity: 'error',
-      from: {
-        pathNot: '^src/app/api/\\[\\.\\.\\.' + 'proxy\\]/route\\.ts$',
-      },
-      to: {
-        path: '^src/lib/proxy/',
-      },
+      from: { pathNot: '^(src/)?app/api/\\[\\.\\.\\.proxy\\]/route\\.ts$' },
+      to: { path: '^(src/)?lib/proxy/' },
     },
-
-    // ── R04: RQ clients must use client.mutator only ────────────────────────
     {
       name: 'rq-uses-client-mutator-only',
       comment:
-        'Generated RQ (TanStack Query) clients must route through the BFF proxy ' +
-        'via client.mutator.ts.',
+        'Generated RQ clients must not import ssr.mutator.ts.',
       severity: 'error',
-      from: {
-        path: '^src/lib/generated/rq/',
-      },
-      to: {
-        path: '^src/lib/api/ssr\\.mutator\\.ts$',
-      },
+      from: { path: '^(src/)?lib/generated/rq/' },
+      to: { path: '^(src/)?lib/api/ssr\\.mutator\\.ts$' },
     },
-
-    // ── R05: SSR clients must use ssr.mutator only ──────────────────────────
     {
       name: 'ssr-uses-ssr-mutator-only',
       comment:
-        'Generated SSR clients must call the backend directly via ssr.mutator.ts.',
+        'Generated SSR clients must not import client.mutator.ts.',
       severity: 'error',
-      from: {
-        path: '^src/lib/generated/ssr/',
-      },
-      to: {
-        path: '^src/lib/api/client\\.mutator\\.ts$',
-      },
+      from: { path: '^(src/)?lib/generated/ssr/' },
+      to: { path: '^(src/)?lib/api/client\\.mutator\\.ts$' },
     },
-
-    // ── R06: Generated files must not import from app/ or components/ ───────
     {
       name: 'generated-no-app-imports',
       comment:
-        'lib/generated/ is a build artefact. It must not import from app/ or components/.',
+        'lib/generated/ is generated output. It must not import from app/ or components/.',
       severity: 'error',
-      from: {
-        path: '^src/lib/generated/',
-      },
-      to: {
-        path: '^(src/app/|components/)',
-      },
+      from: { path: '^(src/)?lib/generated/' },
+      to: { path: '^((src/)?app/|(src/)?components/)' },
     },
-
-    // ── R07: Client components must not access server secrets ───────────────
     {
-      name: 'client-components-no-server-secrets',
+      name: 'client-components-no-server-only-imports',
       comment:
-        'components/ may be rendered as client components. They must never ' +
-        'directly import server-only utilities that read secrets or hold ' +
-        'server-side state.',
+        'Client components must not import server-only auth or SSR transport modules.',
       severity: 'error',
-      from: {
-        path: '^components/',
-      },
+      from: { path: '^(src/)?components/' },
       to: {
-        path: '^(src/lib/api/ssr\\.mutator\\.ts$|src/lib/auth/token-manager\\.ts$)',
+        path: '^((src/)?lib/api/ssr\\.mutator\\.ts$|(src/)?lib/auth/token-manager\\.ts$|auth\\.ts$|proxy\\.ts$)',
       },
     },
-
-    // ── R08: app/ pages should not bypass lib/api/ to import generated code ─
     {
       name: 'no-direct-generated-in-pages',
       comment:
-        'Prefer importing SSR clients via lib/api/fetch-and-validate.ts.',
+        'Prefer importing SSR clients through lib/api/fetch-and-validate.ts or a thin lib/api facade.',
       severity: 'warn',
-      from: {
-        path: '^src/app/',
-      },
-      to: {
-        path: '^src/lib/generated/(ssr|rq)/',
-      },
+      from: { path: '^(src/)?app/' },
+      to: { path: '^(src/)?lib/generated/(ssr|rq)/' },
     },
   ],
-
   options: {
-    doNotFollow: {
-      path: 'node_modules',
-    },
+    doNotFollow: { path: 'node_modules' },
     tsPreCompilationDeps: true,
     enhancedResolveOptions: {
       exportsFields: ['exports'],
       conditionNames: ['import', 'require', 'node', 'default'],
     },
     reporterOptions: {
-      dot: {
-        collapsePattern: 'node_modules/[^/]+',
-      },
-      archi: {
-        collapsePattern:
-          '^(node_modules|src/lib/generated|components/ui)/[^/]+',
-      },
+      dot: { collapsePattern: 'node_modules/[^/]+' },
+      archi: { collapsePattern: '^(node_modules|src/lib/generated|src/components/ui|components/ui)/[^/]+' },
     },
   },
 }
@@ -225,6 +167,10 @@ module.exports = {
 ```json
 {
   "scripts": {
+    "typecheck": "tsc --noEmit",
+    "codegen": "orval",
+    "codegen:remote": "ORVAL_REMOTE=true orval",
+    "codegen:check": "bun run codegen && bun run typecheck",
     "arch:check": "depcruise --config .dependency-cruiser.cjs src proxy.ts auth.ts",
     "arch:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot src proxy.ts auth.ts | dot -T svg > docs/architecture-graph.svg"
   }
@@ -243,9 +189,21 @@ module.exports = {
 | R04 `rq-uses-client-mutator-only` | V3, V7 |
 | R05 `ssr-uses-ssr-mutator-only` | V3, V7 |
 | R06 `generated-no-app-imports` | V7 |
-| R07 `client-components-no-server-secrets` | V2, V3 |
+| R07 `client-components-no-server-only-imports` | V2, V3, V6 |
 | R08 `no-direct-generated-in-pages` | V7 |
 
 ---
 
-> ✅ All 10 views complete.
+## Verification
+
+Run the architecture rule check after structural changes:
+
+```bash
+bun run arch:check
+```
+
+For API contract changes, run generation and type validation:
+
+```bash
+bun run codegen:check
+```

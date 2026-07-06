@@ -1,6 +1,17 @@
 # V8 — Codegen Pipeline
 
-> Render diagrams at https://mermaid.live
+---
+
+## Purpose
+
+The codegen pipeline turns an OpenAPI contract into type-safe frontend data access code. It produces four generated targets:
+
+1. TypeScript API types
+2. Zod response validators
+3. SSR fetch clients for React Server Components
+4. TanStack React Query clients for Client Components
+
+Generated files are build artefacts. They are not edited by hand.
 
 ---
 
@@ -10,47 +21,65 @@
 flowchart TD
     DEV(["👤 Developer\nbun run codegen"])
 
-    DEV --> ENV{BACKEND_URL\nenv var set?}
-    ENV -->|No| ERR1(["❌ Exit: set BACKEND_URL\nin .env.local"])
-    ENV -->|Yes| FETCH
+    DEV --> SOURCE{OpenAPI source}
+    SOURCE -->|Default| LOCAL["src/contracts/openapi.json"]
+    SOURCE -->|ORVAL_REMOTE=true| REMOTE["${BACKEND_URL}/doc-json"]
 
-    FETCH["Orval fetches OpenAPI spec\nGET \${BACKEND_URL}/doc-json"]
+    LOCAL --> PARSE
+    REMOTE --> ENV{BACKEND_URL\nset?}
+    ENV -->|No| ERR1(["❌ Exit: set BACKEND_URL"])
+    ENV -->|Yes| FETCH["Orval fetches remote OpenAPI spec"]
     FETCH --> REACH{Spec endpoint\nreachable?}
-    REACH -->|No| ERR2(["❌ Exit: backend not running\nor URL incorrect"])
+    REACH -->|No| ERR2(["❌ Exit: backend not reachable"])
     REACH -->|Yes| PARSE
 
     PARSE["Orval parses OpenAPI 3.x spec\n— resolves $refs\n— validates spec structure"]
     PARSE --> VALID{Spec valid?}
-    VALID -->|No| ERR3(["❌ Exit: fix OpenAPI spec\non backend"])
+    VALID -->|No| ERR3(["❌ Exit: fix OpenAPI spec"])
     VALID -->|Yes| GEN
 
-    subgraph GEN["⚙️ Four-Target Generation (parallel)"]
+    subgraph GEN["⚙️ Four-target generation"]
         direction LR
-        G1["lib/generated/schemas/\nTypeScript Types\n(interfaces, enums, type aliases)"]
-        G2["lib/generated/zod/\nZod Schemas\n(runtime validators)"]
-        G3["lib/generated/ssr/\nSSR Clients\n(server fetch functions\n→ ssr.mutator.ts)"]
-        G4["lib/generated/rq/\nRQ Clients\n(TanStack Query hooks\n→ client.mutator.ts)"]
+        G1["src/lib/generated/schemas/\nTypeScript Types"]
+        G2["src/lib/generated/zod/\nZod Schemas"]
+        G3["src/lib/generated/ssr/\nSSR Clients\n→ ssr.mutator.ts"]
+        G4["src/lib/generated/rq/\nRQ Clients\n→ client.mutator.ts"]
     end
 
-    GEN --> TSC
-
-    TSC["tsc --noEmit\nTypeScript type check\nacross generated + hand-written code"]
+    GEN --> TSC["bun run typecheck\ntsc --noEmit"]
     TSC --> TSOK{Type check\npasses?}
-    TSOK -->|No| ERR4(["❌ Type errors:\nusually means API contract changed\nUpdate hand-written code to match\nthen re-run codegen"])
-    TSOK -->|Yes| DONE(["✅ Codegen complete\nImport from lib/generated/ in components"])
+    TSOK -->|No| ERR4(["❌ Type errors:\nhand-written code no longer matches API contract"])
+    TSOK -->|Yes| DONE(["✅ Codegen validated"])
 ```
 
 ---
 
-## When to Run
+## OpenAPI Source Modes
 
-| Trigger | Command | Notes |
-|---|---|---|
-| **Initial project setup** | `bun run codegen` | Backend must be running and accessible |
-| **Backend API changed** | `bun run codegen` | Regenerates all four targets; update components if types changed |
-| **Active backend development** | `bun run codegen:watch` | Watches spec endpoint; re-generates on change |
-| **CI/CD deploy pipeline** | `bun run codegen && bun run build` | Codegen runs before build; backend must be reachable from CI |
-| **After deleting `lib/generated/`** | `bun run codegen` | Full regeneration; TypeScript will fail until complete |
+The actual `orval.config.ts` supports two modes:
+
+| Mode | Command | Source | Use case |
+|---|---|---|---|
+| Local contract | `bun run codegen` | `./src/contracts/openapi.json` | Stable template development, offline-safe generation |
+| Remote backend | `bun run codegen:remote` | `${BACKEND_URL}/doc-json` | Syncing against a live backend |
+| Validated local generation | `bun run codegen:check` | `./src/contracts/openapi.json` + `tsc --noEmit` | Fast verification after contract updates |
+
+`codegen:watch` is intentionally not documented as a supported script in this version because the repository does not define a watch-mode implementation.
+
+---
+
+## Repository Scripts
+
+```json
+{
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "codegen": "orval",
+    "codegen:remote": "ORVAL_REMOTE=true orval",
+    "codegen:check": "bun run codegen && bun run typecheck"
+  }
+}
+```
 
 ---
 
@@ -61,40 +90,34 @@ sequenceDiagram
     autonumber
 
     actor Dev as Developer
-    participant BE  as Backend (running locally)
+    participant Spec as OpenAPI Contract
     participant Orval as Orval CLI
-    participant FS  as lib/generated/
+    participant FS as src/lib/generated/
     participant TSC as TypeScript Compiler
     participant IDE as IDE / Editor
 
     Note over Dev,IDE: One-time setup after cloning template
 
-    Dev->>Dev: cp env.example .env.local
-    Dev->>Dev: Set BACKEND_URL=http://localhost:PORT
-
-    Dev->>BE: Start backend (separate terminal)
-    BE-->>Dev: Serving /doc-json
-
+    Dev->>Spec: Place or update src/contracts/openapi.json
     Dev->>Orval: bun run codegen
-    Orval->>BE: GET /doc-json
-    BE-->>Orval: OpenAPI 3.x spec (JSON)
+    Orval->>Spec: Read OpenAPI 3.x spec
     Orval->>FS: Write schemas/, zod/, ssr/, rq/
-    FS-->>Dev: lib/generated/ populated
+    FS-->>Dev: Generated API layer populated
 
-    Dev->>TSC: (auto via IDE or explicit bun run typecheck)
-    TSC->>FS: Type-check generated code
-    TSC->>Dev: ✅ No errors — ready to build
+    Dev->>TSC: bun run typecheck
+    TSC->>FS: Type-check generated + hand-written code
+    TSC-->>Dev: Pass or report contract mismatch
 
     IDE-->>Dev: Autocomplete from generated types
-    Dev->>Dev: Import from lib/generated/ssr/ in Server Components
-    Dev->>Dev: Import from lib/generated/rq/ in Client Components
+    Dev->>Dev: Import SSR clients from src/lib/generated/ssr/ in Server Components
+    Dev->>Dev: Import RQ hooks from src/lib/generated/rq/ in Client Components
 
-    Note over Dev,IDE: After any backend API change
+    Note over Dev,IDE: Remote sync when backend contract changes
 
-    BE-->>Orval: Spec updated (watch mode) or Dev re-runs codegen
+    Dev->>Orval: bun run codegen:remote
+    Orval->>Spec: GET ${BACKEND_URL}/doc-json
     Orval->>FS: Overwrite generated files
-    IDE-->>Dev: Type errors surface if components use removed/changed endpoints
-    Dev->>Dev: Update components to match new API contract
+    IDE-->>Dev: Type errors surface if hand-written code must be updated
 ```
 
 ---
@@ -102,64 +125,57 @@ sequenceDiagram
 ## `orval.config.ts` Structure
 
 ```ts
-// orval.config.ts — root of the project
 import { defineConfig } from 'orval'
 
-export default defineConfig({
+const OPENAPI_SOURCE = process.env.ORVAL_REMOTE === 'true'
+  ? `${process.env.BACKEND_URL}/doc-json`
+  : './src/contracts/openapi.json'
 
-  // Target 1: TypeScript types
+export default defineConfig({
   'api-schemas': {
-    input: {
-      target: `${process.env.BACKEND_URL}/doc-json`,
-    },
+    input: { target: OPENAPI_SOURCE },
     output: {
-      mode: 'tags-split',           // one file per API tag
-      target: 'lib/generated/schemas/',
+      mode: 'tags-split',
+      target: './src/lib/generated/schemas/',
       client: 'fetch',
-      override: {
-        mutator: { path: 'lib/api/ssr.mutator.ts', name: 'ssrMutator' },
-      },
     },
   },
 
-  // Target 2: Zod runtime validators
   'api-zod': {
-    input: {
-      target: `${process.env.BACKEND_URL}/doc-json`,
-    },
+    input: { target: OPENAPI_SOURCE },
     output: {
       mode: 'tags-split',
-      target: 'lib/generated/zod/',
+      target: './src/lib/generated/zod/',
       client: 'zod',
     },
   },
 
-  // Target 3: SSR fetch clients (server-side direct calls)
   'api-ssr': {
-    input: {
-      target: `${process.env.BACKEND_URL}/doc-json`,
-    },
+    input: { target: OPENAPI_SOURCE },
     output: {
       mode: 'tags-split',
-      target: 'lib/generated/ssr/',
+      target: './src/lib/generated/ssr/',
       client: 'fetch',
       override: {
-        mutator: { path: 'lib/api/ssr.mutator.ts', name: 'ssrMutator' },
+        mutator: {
+          path: './src/lib/api/ssr.mutator.ts',
+          name: 'ssrMutator',
+        },
       },
     },
   },
 
-  // Target 4: TanStack React Query hooks (client-side BFF-routed calls)
   'api-rq': {
-    input: {
-      target: `${process.env.BACKEND_URL}/doc-json`,
-    },
+    input: { target: OPENAPI_SOURCE },
     output: {
       mode: 'tags-split',
-      target: 'lib/generated/rq/',
+      target: './src/lib/generated/rq/',
       client: 'react-query',
       override: {
-        mutator: { path: 'lib/api/client.mutator.ts', name: 'clientMutator' },
+        mutator: {
+          path: './src/lib/api/client.mutator.ts',
+          name: 'clientMutator',
+        },
       },
     },
   },
@@ -171,59 +187,52 @@ export default defineConfig({
 ## Output Structure
 
 ```
-lib/
-└── generated/               ← DO NOT EDIT (gitignore or regenerate on deploy)
-    ├── schemas/             ← TypeScript interfaces & types
-    │   ├── posts.ts
-    │   ├── users.ts
-    │   └── index.ts
-    ├── zod/                 ← Zod validators
-    │   ├── posts.zod.ts
-    │   ├── users.zod.ts
-    │   └── index.ts
-    ├── ssr/                 ← Server-side fetch functions
-    │   ├── posts.ts
-    │   ├── users.ts
-    │   └── index.ts
-    └── rq/                  ← TanStack Query hooks
-        ├── posts.ts
-        ├── users.ts
-        └── index.ts
+src/lib/generated/              ← DO NOT EDIT
+├── schemas/                    ← TypeScript interfaces & types
+│   ├── posts.ts
+│   ├── users.ts
+│   └── index.ts
+├── zod/                        ← Zod validators
+│   ├── posts.zod.ts
+│   ├── users.zod.ts
+│   └── index.ts
+├── ssr/                        ← Server-side fetch functions
+│   ├── posts.ts
+│   ├── users.ts
+│   └── index.ts
+└── rq/                         ← TanStack Query hooks
+    ├── posts.ts
+    ├── users.ts
+    └── index.ts
 ```
 
 ---
 
-## `.gitignore` and Deployment Guidance
+## Build Guidance
 
-```gitignore
-# Codegen output — regenerated from backend spec at build time
-lib/generated/
-```
-
-> **Deployment pipeline must run codegen before build:**
-> ```bash
-> bun run codegen && bun run build
-> ```
-> The backend must be reachable from the CI/CD environment at build time.
-> Store `BACKEND_URL` as a CI/CD secret — not in the repository.
+| Context | Recommended command | Notes |
+|---|---|---|
+| Local template work | `bun run codegen:check` | Uses local contract and validates TypeScript |
+| Sync with live backend | `bun run codegen:remote && bun run typecheck` | Requires `BACKEND_URL` |
+| CI with committed local contract | `bun run codegen:check && bun run build` | Backend does not need to be reachable |
+| CI against live backend | `bun run codegen:remote && bun run typecheck && bun run build` | Backend must be reachable from CI |
 
 ---
 
 ## Design Notes
 
-### Four targets, one spec fetch per target
-Orval fetches the spec once per target definition. For efficiency in CI, all four targets share the same `input.target` URL. A future optimisation is to download the spec once to a local file (`spec.json`) and point all targets at it — avoiding four network calls to the backend.
+### Local contract is the default
 
-### `mode: 'tags-split'` keeps generated files manageable
-Without splitting, Orval generates a single large file per target. `tags-split` creates one file per OpenAPI tag (e.g. `posts.ts`, `users.ts`), matching the backend's resource organisation and making diffs easier to review after backend changes.
+The template defaults to `src/contracts/openapi.json` so the repository remains usable without a live backend. Remote codegen is explicit through `ORVAL_REMOTE=true`.
 
-### Watch mode is for development only — not CI
-`bun run codegen:watch` polls the spec endpoint. It should never run in production or CI environments. Use a single `bun run codegen` in the deployment pipeline.
+### Four targets, one contract
 
-### TypeScript errors after codegen signal a breaking change
-If `tsc --noEmit` fails after codegen, it means the backend removed or renamed an endpoint or field that hand-written code depends on. This is intentional — it surfaces breaking API changes at build time rather than at runtime.
+All generated targets use the same OpenAPI source. The split exists because server-side rendering and browser-side fetching need different transport boundaries.
 
----
+### The mutator is the boundary seam
 
-> ✅ Approve to continue to **V9 — Deployment**.
-> Or request changes to the pipeline flow, orval config structure, or output layout.
+SSR clients use `src/lib/api/ssr.mutator.ts` and call the backend directly from the server. RQ clients use `src/lib/api/client.mutator.ts` and route through the BFF proxy.
+
+### Type errors after codegen are expected signals
+
+If `tsc --noEmit` fails after generation, the OpenAPI contract and hand-written code no longer match. The correct fix is to update the hand-written code or the contract, not to edit generated files.

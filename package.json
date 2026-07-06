@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "biome check",
     "format": "biome format --write",
+    "typecheck": "tsc --noEmit",
     "codegen": "orval",
+    "codegen:remote": "ORVAL_REMOTE=true orval",
+    "codegen:check": "bun run codegen && bun run typecheck",
     "arch:check": "depcruise --config .dependency-cruiser.cjs src proxy.ts auth.ts",
     "arch:graph": "depcruise --config .dependency-cruiser.cjs --output-type dot src proxy.ts auth.ts | dot -T svg > docs/architecture-graph.svg"
   },
