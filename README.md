@@ -2,15 +2,13 @@
 
 A secure, scalable Next.js 16 template implementing the Backend-For-Frontend (BFF) pattern with NextAuth 5 (OAuth 2.1) and fully typed Orval generation for OpenAPI backends.
 
-## Philosophy
+## System Architecture
 
-We design the system first, after we define libs/tools and rules. This template provides a robust architectural foundation for frontend developers to vibe code securely against an OpenAPI spec, without reinventing auth or data fetching loops.
+![Architecture Graph](docs/architecture-graph.svg)
 
-- **Single Backend**: This template connects to ONE upstream backend.
-- **Vibe Coding Ready**: Drop in an `openapi.json` and generate your API clients.
-- **Machine-enforced Architecture**: Rules verified by `dependency-cruiser` (`bun run arch:check`).
+This template connects a frontend application to a single upstream backend through a secure Next.js App Router API proxy. Authentication is managed via NextAuth (OAuth 2.1), and all API clients are strictly typed and auto-generated using Orval based on an OpenAPI schema.
 
-## Vibe Coding / Generation Instructions
+## Get Started
 
 To start vibe coding with this template, follow these exact steps:
 
