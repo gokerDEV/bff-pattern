@@ -1,4 +1,4 @@
-# V6 — Auth Layer: Component View
+# V08 — Auth Layer: Component View
 
 ---
 
@@ -109,7 +109,7 @@ workspace "bff-pattern" "Auth Layer — Component View" {
         component authHandler "V6_AuthLayerComponent" {
             include *
             autoLayout tb
-            title "V6 — Auth Layer: Component View"
+            title "V08 — Auth Layer: Component View"
             description "The six components inside the Auth Handler and their consumers."
         }
 

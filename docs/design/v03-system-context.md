@@ -1,4 +1,4 @@
-# V1 — System Context
+# V03 — System Context
 
 ---
 
@@ -51,7 +51,7 @@ workspace "bff-pattern" "Generic Next.js BFF starter template — System Context
         systemContext bffApp "V1_SystemContext" {
             include *
             autoLayout lr
-            title "V1 — bff-pattern: System Context"
+            title "V03 — bff-pattern: System Context"
             description "The bff-pattern application in its environment."
         }
 
@@ -119,5 +119,5 @@ The IdP is shown as a separate external system. In many setups the backend and I
 
 ---
 
-> ✅ Approve to continue to **V2 — Container Map**.
+> ✅ Approve to continue to **V04 — Container Map**.
 > Or request changes to element names, relationships, or descriptions.

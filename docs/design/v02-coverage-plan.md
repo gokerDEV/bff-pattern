@@ -23,7 +23,7 @@
 
 ## View Rationale
 
-### V1 — System Context *(C4 L1)*
+### V03 — System Context *(C4 L1)*
 Shows `bff-pattern` as a single box surrounded by:
 - **Browser User** (end user)
 - **Developer** (who uses the template)
@@ -34,7 +34,7 @@ Shows `bff-pattern` as a single box surrounded by:
 
 ---
 
-### V2 — Container Map *(C4 L2)*
+### V04 — Container Map *(C4 L2)*
 Decomposes the Next.js application into its deployable/runnable parts:
 - **Browser** (React Client Components)
 - **Next.js Server** (React Server Components + App Router)
@@ -50,7 +50,7 @@ Shows two distinct data paths:
 
 ---
 
-### V3 — SSR vs BFF Data Flow *(Sequence)*
+### V05 — SSR vs BFF Data Flow *(Sequence)*
 Two side-by-side sequence diagrams in one view:
 
 **Path A — SSR (Server Component):**
@@ -63,7 +63,7 @@ Browser → `fetch(/api/[proxy])` → BFF route → inject token → Backend API
 
 ---
 
-### V4 — Auth Flows *(Sequence)*
+### V06 — Auth Flows *(Sequence)*
 Three flows:
 
 1. **User Login** — Browser → NextAuth `/api/auth/signin` → IdP → JWT session
@@ -74,7 +74,7 @@ Three flows:
 
 ---
 
-### V5 — BFF Proxy Component *(C4 L3)*
+### V07 — BFF Proxy Component *(C4 L3)*
 Inside `app/api/[...proxy]/route.ts`:
 - **Route Handler** — receives client request
 - **Auth Guard** — checks session / validates origin (CSRF)
@@ -87,7 +87,7 @@ Inside `app/api/[...proxy]/route.ts`:
 
 ---
 
-### V6 — Auth Layer Component *(C4 L3)*
+### V08 — Auth Layer Component *(C4 L3)*
 Inside the Auth subsystem:
 - **NextAuth Config** (`auth.config.ts`) — providers, callbacks
 - **Token Manager** — client credentials cache + refresh logic (30-sec buffer)
@@ -98,7 +98,7 @@ Inside the Auth subsystem:
 
 ---
 
-### V7 — Data Layer Component *(C4 L3)*
+### V09 — Data Layer Component *(C4 L3)*
 Inside the generated data layer (`kodkafa/` → generic equivalent):
 - **SSR Clients** — server-only fetch wrappers (direct API)
 - **RQ Clients** — TanStack React Query hooks (client-side, BFF-routed)
@@ -111,7 +111,7 @@ Inside the generated data layer (`kodkafa/` → generic equivalent):
 
 ---
 
-### V8 — Codegen Pipeline *(Activity / Flow)*
+### V12 — Codegen Pipeline *(Activity / Flow)*
 Dev-time workflow:
 ```
 Backend (OpenAPI spec /doc-json)
@@ -127,7 +127,7 @@ Shows: when to run, what gets generated, what not to edit manually.
 
 ---
 
-### V9 — Deployment *(Deployment)*
+### V11 — Deployment *(Deployment)*
 Runtime topology on Vercel:
 - Serverless functions (Next.js server, BFF proxy, auth routes)
 - Edge middleware (route protection)
@@ -138,7 +138,7 @@ Runtime topology on Vercel:
 
 ---
 
-### V10 — Architecture Rules *(dependency-cruiser)*
+### V12 — Architecture Rules *(dependency-cruiser)*
 Forbidden dependency rules encoded as a table + `dependency-cruiser` config:
 
 | Rule | Description |
@@ -174,5 +174,5 @@ Each view reuses element names and identifiers established in prior views.
 
 ---
 
-> ✅ Approve this plan to begin with **V1 — System Context**.
+> ✅ Approve this plan to begin with **V03 — System Context**.
 > Or request changes to any view scope, notation, or order.

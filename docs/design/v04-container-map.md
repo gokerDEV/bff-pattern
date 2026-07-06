@@ -1,4 +1,4 @@
-# V2 — Container Map
+# V04 — Container Map
 
 ---
 
@@ -100,7 +100,7 @@ workspace "bff-pattern" "Generic Next.js BFF starter template — Container Map"
         container bffApp "V2_ContainerMap" {
             include *
             autoLayout lr
-            title "V2 — bff-pattern: Container Map"
+            title "V04 — bff-pattern: Container Map"
             description "The five logical containers inside the Next.js application and their runtime relationships."
         }
 
@@ -213,5 +213,5 @@ The `developer → backendApi` arrow (fetching OpenAPI spec for `bun run codegen
 
 ---
 
-> ✅ Approve to continue to **V3 — SSR vs BFF Data Flow** (sequence diagrams).
+> ✅ Approve to continue to **V05 — SSR vs BFF Data Flow** (sequence diagrams).
 > Or request changes to container names, descriptions, or relationships.

@@ -1,4 +1,4 @@
-# V5 — BFF Proxy: Component View
+# V07 — BFF Proxy: Component View
 
 ---
 
@@ -99,7 +99,7 @@ workspace "bff-pattern" "BFF Proxy — Component View" {
         component bffProxy "V5_BFFProxyComponent" {
             include *
             autoLayout tb
-            title "V5 — BFF Proxy: Component View"
+            title "V07 — BFF Proxy: Component View"
             description "The 7 processing components inside the BFF catch-all proxy route."
         }
 
@@ -221,5 +221,5 @@ The upstream response is relayed as-is (status code, body). Response headers are
 
 ---
 
-> ✅ Approve to continue to **V6 — Auth Layer Component** (C4 L3).
+> ✅ Approve to continue to **V08 — Auth Layer Component** (C4 L3).
 > Or request changes to components, pipeline order, or file placement.

@@ -1,4 +1,4 @@
-# V9 — Deployment
+# V11 — Deployment
 
 ---
 
@@ -93,7 +93,7 @@ workspace "bff-pattern" "Deployment View — Production" {
         deployment bffApp "Production" "V9_Deployment" {
             include *
             autoLayout lr
-            title "V9 — bff-pattern: Deployment (Production)"
+            title "V11 — bff-pattern: Deployment (Production)"
             description "Runtime topology on Vercel and customer infrastructure."
         }
 

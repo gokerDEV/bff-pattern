@@ -1,4 +1,4 @@
-# V4 — Auth Flows
+# V06 — Auth Flows
 
 > Render diagrams at https://mermaid.live
 
@@ -153,5 +153,5 @@ NextAuth.js sets these by default. `SameSite=Lax` prevents CSRF on GET requests 
 
 ---
 
-> ✅ Approve to continue to **V5 — BFF Proxy Component** (C4 L3).
+> ✅ Approve to continue to **V07 — BFF Proxy Component** (C4 L3).
 > Or request changes to any flow step or design note.

@@ -1,4 +1,4 @@
-# V7 — Data Layer: Component View
+# V09 — Data Layer: Component View
 
 ---
 
@@ -119,7 +119,7 @@ workspace "bff-pattern" "Data Layer — Component View" {
         component dataLayer "V7_DataLayerComponent" {
             include *
             autoLayout tb
-            title "V7 — Data Layer: Component View"
+            title "V09 — Data Layer: Component View"
             description "Generated API clients, Zod schemas, and hand-written mutators."
         }
 
@@ -268,5 +268,5 @@ Raw upstream errors may contain internal stack traces, service names, or databas
 
 ---
 
-> ✅ Approve to continue to **V8 — Codegen Pipeline**.
+> ✅ Approve to continue to **V12 — Codegen Pipeline**.
 > Or request changes to components, boundaries, or the mutator pattern.

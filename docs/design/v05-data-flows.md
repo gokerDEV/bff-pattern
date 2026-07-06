@@ -1,4 +1,4 @@
-# V3 — SSR vs BFF Data Flow
+# V05 — SSR vs BFF Data Flow
 
 > Render diagrams at https://mermaid.live
 
@@ -163,5 +163,5 @@ The mutator swap is the only difference between SSR and RQ generated clients. Th
 
 ---
 
-> ✅ Approve to continue to **V4 — Auth Flows**.
+> ✅ Approve to continue to **V06 — Auth Flows**.
 > Or request changes to any step, actor, or decision rule.

@@ -37,16 +37,16 @@ To start vibe coding with this template, follow these exact steps:
 
 Our complete architecture is documented using the C4 model. Please read these before writing code.
 
-* [V1 — System Context](docs/design/v1-system-context.md)
-* [V2 — Container Map](docs/design/v2-container-map.md)
-* [V3 — Data Flows](docs/design/v3-data-flows.md)
-* [V4 — Auth Flows](docs/design/v4-auth-flows.md)
-* [V5 — BFF Proxy Component](docs/design/v5-bff-proxy-component.md)
-* [V6 — Auth Layer Component](docs/design/v6-auth-layer-component.md)
-* [V7 — Data Layer Component](docs/design/v7-data-layer-component.md)
-* [V8 — Codegen Pipeline](docs/design/v8-codegen-pipeline.md)
-* [V9 — Deployment](docs/design/v9-deployment.md)
-* [V10 — Architecture Rules](docs/design/v10-architecture-rules.md)
+* [V03 — System Context](docs/design/v03-system-context.md)
+* [V04 — Container Map](docs/design/v04-container-map.md)
+* [V05 — Data Flows](docs/design/v05-data-flows.md)
+* [V06 — Auth Flows](docs/design/v06-auth-flows.md)
+* [V07 — BFF Proxy Component](docs/design/v07-bff-proxy-component.md)
+* [V08 — Auth Layer Component](docs/design/v08-auth-layer-component.md)
+* [V09 — Data Layer Component](docs/design/v09-data-layer-component.md)
+* [V10 — Codegen Pipeline](docs/design/v10-codegen-pipeline.md)
+* [V11 — Deployment](docs/design/v11-deployment.md)
+* [V12 — Architecture Rules](docs/design/v12-architecture-rules.md)
 
 ## Development
 

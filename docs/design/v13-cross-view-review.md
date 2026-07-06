@@ -166,18 +166,18 @@ The two omissions (F03, F04) are low-severity and do not affect any architectura
 
 | Output | File |
 |---|---|
-| Discovery Summary | `discovery-summary.md` |
-| Coverage Plan | `coverage-plan.md` |
-| V1 System Context | `views/v1-system-context.md` |
-| V2 Container Map | `views/v2-container-map.md` |
-| V3 SSR vs BFF Data Flow | `views/v3-data-flows.md` |
-| V4 Auth Flows | `views/v4-auth-flows.md` |
-| V5 BFF Proxy Component | `views/v5-bff-proxy-component.md` |
-| V6 Auth Layer Component | `views/v6-auth-layer-component.md` |
-| V7 Data Layer Component | `views/v7-data-layer-component.md` |
-| V8 Codegen Pipeline | `views/v8-codegen-pipeline.md` |
-| V9 Deployment | `views/v9-deployment.md` |
-| V10 Architecture Rules | `views/v10-architecture-rules.md` |
-| Cross-View Review | `cross-view-review.md` (this file) |
+| Discovery Summary | `v01-discovery-summary.md` |
+| Coverage Plan | `v02-coverage-plan.md` |
+| V1 System Context | `views/v03-system-context.md` |
+| V2 Container Map | `views/v04-container-map.md` |
+| V3 SSR vs BFF Data Flow | `views/v05-data-flows.md` |
+| V4 Auth Flows | `views/v06-auth-flows.md` |
+| V5 BFF Proxy Component | `views/v07-bff-proxy-component.md` |
+| V6 Auth Layer Component | `views/v08-auth-layer-component.md` |
+| V7 Data Layer Component | `views/v09-data-layer-component.md` |
+| V8 Codegen Pipeline | `views/v10-codegen-pipeline.md` |
+| V9 Deployment | `views/v11-deployment.md` |
+| V10 Architecture Rules | `views/v12-architecture-rules.md` |
+| Cross-View Review | `v13-cross-view-review.md` (this file) |
 
 **Ready to move to: defining libs, tools, and rules for the template.**
